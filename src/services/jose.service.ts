@@ -87,7 +87,7 @@ export class JoseService{
         * @author Mitchy 
         */
         filePath = filePath || join(__dirname, '../../public/.well-known/', 'jwks.json');
-        const contents = JSON.stringify(this.getKeystoreJson(), null, 4);
+        const contents = JSON.stringify(this.getKeystoreJson(true), null, 4);
 
         try{
             writeFileSync(filePath, contents, 'utf8');

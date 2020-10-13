@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateAccountDto, UpdateAccountDto } from './dto';
 import { Account } from './account.entity';
-import { NoUserFound } from './account.errors';
+import { NoUserFound, WrongUsernameOrPassword } from './account.errors';
 
 
 @Injectable()
@@ -13,6 +13,24 @@ export class AccountsService {
         @InjectRepository(Account)
         private readonly accountsRepository: Repository<Account>,
     ) { }
+
+    async loginWithUserName(userName: string, password: string): Promise<Account>{
+        const user:Account = await this.accountsRepository.findOneOrFail({
+            login: userName
+        });
+        if(this.login(user, password)) return user; 
+        else throw new WrongUsernameOrPassword(userName, password);
+    }
+    async loginWithEmail(email: string, password: string): Promise<Account>{
+        const user:Account = await this.accountsRepository.findOneOrFail({
+            email: email
+        });
+        if(this.login(user, password)) return user; 
+        else throw new WrongUsernameOrPassword(email, password);
+    }
+    login(user:Account, password: string): boolean{
+        return bcrypt.compareSync(password, user.crypted_password);
+    }
 
     async create(createAccountDto: CreateAccountDto): Promise<Account> {
         const account = new Account();
