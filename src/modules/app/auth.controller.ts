@@ -1,49 +1,70 @@
-import { 
+import {
     /**
      * @namespace Controllers  
      */
-    Controller, 
-    Get, 
-    Query, 
+    Controller,
+    Get,
+    Post, 
+    Query,
+    Body, 
+    Render,
+    Redirect, 
+    Req,
+    Res, 
+    UnauthorizedException,
 
     /**
      * @namespace Session 
      */
     Session,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
+
+/**
+ * @requires Services 
+ */
 import { AppService } from './app.service';
+import { LoginDto } from './dto';
+import { Account } from '../entities/accounts/account.entity';
+import { AccountsService } from '../entities/accounts/account.service';
 
 /**
  * @namespace OIDC Exceptions 
  */
-import { 
-    OidcException,  
-    OidcErrorsEnum, 
+import {
+    OidcException,
+    OidcErrorsEnum,
 } from '../../exceptions';
 /**
  * @namespace Auth types  
  */
-import { 
+import {
     ScopeEnum,
     ResponseTypeEnum,
     ResponseModeEnum,
-    AuthDisplay, 
+    AuthDisplay,
     AuthPrompt,
-    RoleEnum, 
+    RoleEnum,
+    InteractionModel,
 } from '../../models';
 
 /**
  * @requires Pipes and Validators 
  */
-import {ClientIdValidator} from '../../pipes'; 
+import {
+    ClientIdValidator,
+    RedirectUriValidator,
+    ScopeValidator,
+    ResponseTypeValidator,
+} from '../../pipes';
 
 import { JoseService } from '../../services/jose.service';
-import { JWS, JWK } from 'node-jose';
 
 @Controller('auth')
 export class AuthController {
     constructor(
         private readonly appService: AppService,
+        private readonly accountsService: AccountsService,
     ) { }
 
     /**
@@ -136,90 +157,124 @@ export class AuthController {
      * @memberof AuthController
      */
     @Get('/')
+    @Redirect('/auth/login')
     getAuth(
+        /** @namespace Express */
+        @Req() req: Request,
+        @Res() res: Response,
+
         /** @namespace Session */
-        @Session() session: { interaction?: number },
+        @Session() session: { interaction?: InteractionModel },
 
         /** @namespace OAuth */
-        @Query('client_id', ClientIdValidator)     client_id: {isOk:boolean, msg?, clientId?},
-        @Query('redirect_uri')  redirect_uri: string, 
-        @Query('scope')         scope: ScopeEnum, 
-        @Query('response_type') response_type: ResponseTypeEnum,
-        @Query('state')         state?: string,
-        
+        @Query('client_id', ClientIdValidator) client_id: string,
+        @Query('redirect_uri', RedirectUriValidator) redirect_uri: string,
+        @Query('scope', ScopeValidator) scope: ScopeEnum[],
+        @Query('response_type', ResponseTypeValidator) response_type: ResponseTypeEnum[],
+        @Query('state') state?: string,
+
         /** @namespace OIDC */
         @Query('response_mode') response_mode?: ResponseModeEnum,
-        @Query('nonce')         nonce?: string, 
-        @Query('display')       display?: AuthDisplay,
-        @Query('prompt')        prompt?: AuthPrompt, 
-        @Query('max_age')       max_age?: number,
-        @Query('ui_locales')    ui_locales?: string,
+        @Query('nonce') nonce?: string,
+        @Query('display') display?: AuthDisplay,
+        @Query('prompt') prompt?: AuthPrompt,
+        @Query('max_age') max_age?: number,
+        @Query('ui_locales') ui_locales?: string,
         @Query('id_token_hint') id_token_hint?: string,
-        @Query('login_hint')    login_hint?: string,
-        @Query('acr_values')    acr_values?: string,
-    ): any {
+        @Query('login_hint') login_hint?: string,
+        @Query('acr_values') acr_values?: string,
 
-        session.interaction = (session.interaction || 0) + 1;
-
-        return session.interaction; 
+    ) {
         
-        if(client_id.isOk === false){
-            return 'OH FUCK! ' + JSON.stringify(client_id, null, 4);     
+        if (session && session.interaction) {
+            session.interaction = { ...session.interaction };
         }
         else{
-            return 'OK';
+            session.interaction = {
+                loginAttempts: 1,    
+            }
         }
-        return 'ok'; 
+        session.interaction = {
+            loginAttempts: session.interaction.loginAttempts ? session.interaction.loginAttempts++ : 1,
+            clientIp: req.hasOwnProperty('clientIp') ? req['clientIp'] : '',
+            client_id,
+            redirect_uri,
+            scope,
+            response_type,
+            state,
+            response_mode,
+            nonce,
+            display,
+            prompt,
+            max_age,
+            ui_locales,
+            id_token_hint,
+            login_hint,
+            acr_values,
+        };
 
+        if(prompt === AuthPrompt.create) 
+            return {
+                url: '/auth/register'
+            };
+        else 
+            return {
+                url: '/auth/login'
+            };
+        /*
+        return {
+            ...session.interaction
+        };
         const err = new OidcException(OidcErrorsEnum.access_denied, 'https://jwt.io');
         throw err;
-
-        return this.appService.getHello();
+        */
     }
 
     @Get('/jwk')
-    async getJwk(){
+    async getJwk() {
         const joseService = JoseService.inject();
-        // joseService.createSignKey();
-        // joseService.createSignKey();
-        // joseService.writeKeyStore(); 
-        try{
-            await joseService.importKeystoreFromUrl('http://localhost:4001/.well-known/jwks.json'); 
+        await joseService.createSignKey();
+        await joseService.createSignKey();
+        joseService.writeKeyStore();
+        try {
+            await joseService.importKeystoreFromFile();
         }
-        catch(err){
-            return {err}
+        catch (err) {
+            return { err }
         }
         return joseService.getKeystoreJson();
     }
-    
+
     @Get('/jwt/sign')
-    async getSignJwt(){
+    async getSignJwt() {
         const joseService = JoseService.inject();
-        try{
+        try {
             // await joseService.importKeystoreFromUrl('http://localhost:4001/.well-known/jwks.json'); 
             // const key = await joseService.createSignKey();
-            
+
             // const keystore = JWK.createKeyStore()
             // const key = await keystore.generate('RSA', 2048, {alg:'RS256', use: 'sig', key_ops:["sign", "decrypt", "unwrap"]});
             // keystore.add(key);
-            await joseService.createSignKey();
-            await joseService.createSignKey(); 
+            // await joseService.createSignKey();
+            // await joseService.createSignKey(); 
 
-            var payload = {"sub": "1234567890",  "name": "Eric D.",  "role": "admin","iat": 1516239022};
+            await joseService.importKeystoreFromFile();
+
+            var payload = { "sub": "1234567890", "name": "Eric D.", "role": "admin", "iat": 1516239022 };
 
             // var token = await JWS.createSign({alg: "RS256", format: 'compact'}, key).update(payload, "utf8").final();
 
             var token = await joseService.createSignedToken(payload);
 
             return {
-                token, 
-                jwks: joseService.getKeystoreJson()
-            }; 
+                token,
+                // jwks: joseService.getKeystoreJson()
+            };
 
             console.log('Keystore---->', await joseService.getKeystoreJson());
             return await joseService.createAccessToken({
                 workspaces: [
-                    { 
+                    {
                         workspace: 'masterclass',
                         role: RoleEnum.ADMIN
                     }
@@ -228,17 +283,95 @@ export class AuthController {
                 aud: [
                     'client_id'
                 ],
-                iat: ''+parseInt((new Date('2012.08.10').getTime() / 1000).toFixed(0))
+                iat: '' + parseInt((new Date('2012.08.10').getTime() / 1000).toFixed(0))
             })
         }
-        catch(err){
-            return {err}
+        catch (err) {
+            return { err }
         }
     }
 
     @Get('/.well-known/jwks')
-    getJwks(){
+    getJwks() {
         const joseService = JoseService.inject();
         return joseService.getKeystoreJson();
+    }
+
+    @Get('/login')
+    @Render('login')
+    getLogin(
+        @Session() session: { 
+            interaction?: InteractionModel, 
+            email?: string, 
+            password?: string 
+        },
+    ) {
+        return {
+            email: session.email || '',
+            password: session.password || '',
+            postUri: '/auth/login',
+            ...session.interaction
+        };
+    }
+
+    @Post('/login')
+    postLogin(
+        @Body() loginDto: LoginDto,
+        @Session() session: { 
+            interaction?: InteractionModel, 
+            email?: string, 
+            password?: string 
+        },
+    ): Promise<Account>{
+        if(loginDto.email){
+            session.email = loginDto.email;
+            session.password = loginDto.password;
+            return this.accountsService.loginWithEmail(
+                loginDto.email, 
+                loginDto.password
+            );
+        }
+        // else if(loginDto.userName){
+        //     session.userName = loginDto.userName;
+        //     session.password = loginDto.password;
+        //     return this.accountsService.loginWithUserName(
+        //         loginDto.userName, 
+        //         loginDto.password
+        //     );
+        // }
+        else throw new UnauthorizedException(loginDto);
+    }
+
+
+    @Get('/register')
+    @Render('register')
+    getRegister(
+        /** @namespace Session */
+        @Session() session: { interaction?: InteractionModel },
+    ) {
+        return {
+            email: '@todo - from session and/or cookie',
+            password: '@todo - from session and/or cookie',
+            postUri: '/auth/register',
+            ...session.interaction
+        };
+    }
+
+
+
+
+    @Get('/forgot')
+    @Render('forgot')
+    getForgot(
+        /** @namespace Session */
+        @Session() session: { interaction?: InteractionModel },
+    ) {
+        return {
+            email: '@todo - from session and/or cookie',
+            password: '@todo - from session and/or cookie',
+            postUri: '/auth/forgot',
+            logoUri: 'https://cdn.dribbble.com/users/1502795/screenshots/6205291/m.png',
+            ...session.interaction
+        };
     }
 }

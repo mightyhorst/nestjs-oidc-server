@@ -2,6 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './modules/app/app.module';
 
 /**
+ * @namespace middleware
+ */
+import * as requestIp from 'request-ip';
+
+/**
  * @requires Views
  */
 import { join } from 'path';
@@ -12,10 +17,17 @@ import { NestExpressApplication } from '@nestjs/platform-express';
  */
 import { AllExceptionsFilter } from './filters'
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 async function bootstrap() {
     const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+    /**
+     * @namespace middleware
+     */
+    app.set('trust proxy', true); 
+    app.use(requestIp.mw());
+
 
     /**
     * @step MVC

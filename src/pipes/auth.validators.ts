@@ -41,7 +41,7 @@ export class ClientIdValidator implements PipeTransform {
             );
         }
         else{
-            return clientId; 
+            return String(clientId); 
 
 
             await setTimeout(()=> {}, 2000)

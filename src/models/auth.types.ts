@@ -1,6 +1,7 @@
 export enum AuthRequestRequiredParamters{
     response_type = 'response_type',
     client_id = 'client_id',
+    redirect_uri = 'redirect_uri', 
     scope = 'scope',
     
 }
@@ -112,7 +113,14 @@ export enum AuthPrompt{
     none = 'none',
     login = 'login', 
     consent = 'consent', 
-    select_account = 'select_account'
+    select_account = 'select_account',
+
+    /**
+     * @param prompt = 'create' 
+     * @desc register page 
+     * @see https://openid.net/specs/openid-connect-prompt-create-1_0.html
+     */
+    create = 'create'
 }
 
 /**
