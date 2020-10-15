@@ -97,15 +97,33 @@
       "types": [
         {
           "name": "feature",
-          "emoji": "🌟 feat:",
-          "code": ":star2: feat:",
+          "emoji": "🚀 feat:",
+          "code": ":rocket: feat:",
           "description": "A new hope/feature"
+        },
+        {
+          "name": "fix",
+          "emoji": "🐛 fix:",
+          "code": ":bug: fix:",
+          "description": "Fix something"
         },
         {
           "name": "chore",
           "emoji": "🧽 chore:",
           "code": ":pencil: chore:",
           "description": "A new hope/feature"
+        },
+        {
+          "name": "test",
+          "emoji": "✅ test:",
+          "code": ":white_check_mark: test:",
+          "description": "Update tests"
+        },
+        {
+          "name": "cicd",
+          "emoji": "📦 cicd:",
+          "code": ":package: cicd:",
+          "description": "Update cicd, env or scripts"
         }
       ],
       "skipQuestions": ["scope"]
