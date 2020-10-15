@@ -43,4 +43,4 @@ export const IDP_DB_MONGO_OPTIONS_TOKEN = 'IDP_DB_MONGO_OPTIONS';
         ...mongodbProviders,
     ],
 })
-export class DatabaseModule {}
+export class MongoDbModule {}
