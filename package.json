@@ -97,11 +97,18 @@
       "types": [
         {
           "name": "feature",
-          "emoji": "🌟 feat",
-          "code": ":star2: feat",
+          "emoji": "🌟 feat:",
+          "code": ":star2: feat:",
+          "description": "A new hope/feature"
+        },
+        {
+          "name": "chore",
+          "emoji": "🧽 chore:",
+          "code": ":pencil: chore:",
           "description": "A new hope/feature"
         }
-      ]
+      ],
+      "skipQuestions": ["scope"]
     }
   }
 }
