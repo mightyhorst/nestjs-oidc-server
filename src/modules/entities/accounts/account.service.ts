@@ -25,11 +25,17 @@ export class AccountsService {
         const user:Account = await this.accountsRepository.findOneOrFail({
             email: email
         });
+        console.log('😎 user', {
+            user,
+            bcrypt_password: bcrypt.hashSync(password, 10)
+        });
         if(this.login(user, password)) return user; 
         else throw new WrongUsernameOrPassword(email, password);
     }
     login(user:Account, password: string): boolean{
-        return bcrypt.compareSync(password, user.crypted_password);
+        const isMatch = bcrypt.compareSync(password, user.bcrypt_password);
+        console.log(isMatch ? `🎉 password matches` : `❌ password mismatches`, {isMatch, userPwd: user.bcrypt_password, password});
+        return isMatch; 
     }
 
     async create(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -45,7 +51,7 @@ export class AccountsService {
          *  const hash = await bcrypt.hash(passwordInPlaintext, 10);
             const isPasswordMatching = await bcrypt.compare(passwordInPlaintext, hashedPassword);
         */
-        account.crypted_password = bcrypt.hashSync(createAccountDto.password, 10);
+        account.bcrypt_password = bcrypt.hashSync(createAccountDto.password, 10);
 
         account.enabled = true;
         account.email_verified = false;

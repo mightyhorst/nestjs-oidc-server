@@ -6,6 +6,8 @@ import {
     HttpStatus,
 } from '@nestjs/common';
 
+import { Request, Response } from 'express';
+
 /**
  * @requires Exceptions - custom OIDC exceptions  
  */
@@ -15,8 +17,9 @@ import { OidcException, OidcBadRequestException } from '../exceptions';
 export class AllExceptionsFilter implements ExceptionFilter {
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
+        const request = ctx.getRequest<Request>();
         const response = ctx.getResponse();
-        const request = ctx.getRequest();
+        // const response = ctx.getResponse<Response>();
 
         const status =
             exception instanceof HttpException
@@ -29,22 +32,37 @@ export class AllExceptionsFilter implements ExceptionFilter {
         * @author Mitchy 
         */
         if(exception instanceof OidcException){
-            response.redirect(301, exception.getRedirectUri());
+            response.redirect(exception.getRedirectUri());
+            /** response.redirect(301, exception.getRedirectUri()); */
         }
+        
         /**
         * @step Request Error 
         * @desc Request Error - the client hasn't provided compliant paramaters in the oauth requests 
         * @author Mitchy 
         */
         else if(exception instanceof OidcBadRequestException){
-            response.render('error', exception.getResponse()); 
+            switch(request.method){
+                case 'POST':
+                    response
+                        .status(status)
+                        .json(exception.getResponse());
+                    break;
+                default:
+                    response.render('error', exception.getResponse()); 
+                    break; 
+            }
         }
         else{
-            response.status(status).json({
-                statusCode: status,
-                timestamp: new Date().toISOString(),
-                path: request.url,
-            });
+            response
+                .status(status)
+                .json({
+                    statusCode: status,
+                    timestamp: new Date().toISOString(),
+                    path: request.url,
+                    exception: (exception as Error).message,
+                    stack: (exception as Error).stack,
+                });
         }
     }
 }

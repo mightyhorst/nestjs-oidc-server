@@ -8,7 +8,7 @@ import {
 /**
  * @requires Exceptions
  */
-import { OidcException, OidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
+import { OidcException, Oauth2AndOidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
 
 /**
  * @requires Models and Types
@@ -42,29 +42,29 @@ import {AuthRequestRequiredParamters, ResponseTypeEnum} from '../../models';
 @Injectable()
 export class ResponseTypeValidator implements PipeTransform {
 
-    async transform(ResponseTypes: string, metadata: ArgumentMetadata): Promise<ResponseTypeEnum[]> {
+    async transform(responseTypes: string, metadata: ArgumentMetadata): Promise<ResponseTypeEnum[]> {
 
-        console.log('checking the ResponseTypes '); 
-        if(!ResponseTypes || typeof(ResponseTypes) !== 'string'){
+        console.log('👉 checking the ResponseTypes ', {responseTypes}); 
+        if(!responseTypes || typeof(responseTypes) !== 'string'){
             throw new OidcBadRequestException(
-                OidcErrorsEnum.invalid_request,
+                Oauth2AndOidcErrorsEnum.invalid_request,
                 AuthRequestRequiredParamters.response_type
             );
         }
         else{
 
-            ResponseTypes = ResponseTypes.replace('%20', ' ');
-            const splitResponseTypes = ResponseTypes.split(' ');
+            responseTypes = responseTypes.replace('%20', ' ');
+            const splitResponseTypes = responseTypes.split(' ');
 
             var validResponseTypes:ResponseTypeEnum[] = [];
 
             const oidcError = new OidcBadRequestException(
-                OidcErrorsEnum.unsupported_response_type,
+                Oauth2AndOidcErrorsEnum.unsupported_response_type,
                 AuthRequestRequiredParamters.response_type
             );
 
-            splitResponseTypes.forEach(ResponseType => {
-                switch(ResponseType){
+            splitResponseTypes.forEach(responseType => {
+                switch(responseType){
                     case(ResponseTypeEnum.code):
                         validResponseTypes.push(ResponseTypeEnum.code);
                         break;

@@ -133,8 +133,8 @@ export class ClientsService {
         return this.clientsRepository.find();
     }
 
-    async findOne(id: string): Promise<Client> {
-        return this.clientsRepository.findOne(id);
+    async findOne(client_id: string): Promise<Client> {
+        return this.clientsRepository.findOne({client_id})
     }
 
     async remove(id: string): Promise<void> {

@@ -4,9 +4,16 @@ import {writeFileSync, readFileSync} from 'fs';
 import fetch from 'node-fetch';
 
 /**
+ * @requires Config
+ */
+import { ISSUER } from '../config';
+
+ /**
  * @requires Models
  */
-import {IdTokenPayload, AccessTokenPayload} from '../models';
+import {IdTokenPayload, AccessTokenPayload, ScopeEnum} from '../models';
+import { Account } from '../modules/entities/accounts';
+import { Client } from '../modules/entities/clients';
 
 /**
  * @requires Errors
@@ -285,7 +292,7 @@ export class JoseService{
      * @returns {JWT}  signedToken
      * @memberof JoseService
      */
-    async createSignedToken(payload): Promise<JWS.CreateSignResult> {
+    async createSignedToken(payload): Promise<string> {
 
         try{
             payload = JSON.stringify(payload)
@@ -303,17 +310,32 @@ export class JoseService{
                 final();
 
             console.log('🤖 JwkService.createSignedToken: ', jwt);
-            return jwt; 
+            return jwt.signResult.toString(); 
         }
         catch(err){
             throw new JwtSignError(key, payload, err.message);
         }
     }
 
-    async createIdToken(idToken: IdTokenPayload){
-        return this.createSignedToken(idToken);
+    async createIdToken(user: Account, client: Client, scopes: ScopeEnum[]){
+        const idPayload: IdTokenPayload = {
+            iss: ISSUER,
+            iat: (new Date()).toISOString(),
+            aud: [client.client_name],
+            workspaces: user.workspaces,
+        }
+        return this.createSignedToken({
+            ...idPayload, 
+            ...user
+        });
     }
-    async createAccessToken(accessToken: AccessTokenPayload){
+    async createAccessToken(user: Account, client: Client ){
+        const accessToken: AccessTokenPayload = {
+            iss: ISSUER,
+            iat: (new Date()).toISOString(),
+            aud: [client.client_name],
+            workspaces: user.workspaces,
+        };
         return this.createSignedToken(accessToken);
     }
 

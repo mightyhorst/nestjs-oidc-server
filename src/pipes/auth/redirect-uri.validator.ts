@@ -1,15 +1,14 @@
 import { 
     PipeTransform, 
     Injectable, 
-    ArgumentMetadata, 
-    Inject 
+    ArgumentMetadata,  
 } from '@nestjs/common';
 
 
 /**
  * @requires Exceptions
  */
-import { OidcException, OidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
+import { OidcException, Oauth2AndOidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
 
 /**
  * @requires Models and Types
@@ -33,7 +32,7 @@ import {AuthRequestRequiredParamters} from '../../models';
         The Redirection URI MAY use an alternate scheme, such as one that is intended to identify a callback into a native application.
  *
  * @export
- * @class ClientIdValidator
+ * @class RedirectUriValidator
  * @implements {PipeTransform}
  */
 @Injectable()
@@ -41,10 +40,10 @@ export class RedirectUriValidator implements PipeTransform {
 
     async transform(redirectUri: any, metadata: ArgumentMetadata) {
 
-        console.log('checking the redirectUri '); 
+        console.log('👉 checking the redirectUri ', {redirectUri}); 
         if(!redirectUri){
             throw new OidcBadRequestException(
-                OidcErrorsEnum.invalid_request,
+                Oauth2AndOidcErrorsEnum.invalid_request,
                 AuthRequestRequiredParamters.redirect_uri
             );
         }

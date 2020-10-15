@@ -20,12 +20,20 @@ export class Account {
 
     /**
      * @const password 
+     * @description this is the password used by PHP OIDC Server 
+     * @deprecated 
+     */
+    @Column()
+    crypted_password: string;  
+    
+    /**
+     * @const password 
      * @example 
      *  const hash = await bcrypt.hash(passwordInPlaintext, 10);
         const isPasswordMatching = await bcrypt.compare(passwordInPlaintext, hashedPassword);
      */
     @Column()
-    crypted_password: string;  
+    bcrypt_password: string;  
 
     /** ~~~~~~~~~~~~~~~~~~~~
      * 

@@ -74,7 +74,7 @@ export interface IClaims{
     picture?: string; 
     website?: string; 
     email?: string; 
-    email_verified: boolean; 
+    email_verified?: boolean; 
     gender?: string; 
     birthdate?: string; 
     zoneinfo?: string; 

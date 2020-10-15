@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 /**
  * @requires Exceptions 
  */
-import {OidcException, OidcErrorsEnum} from '../../exceptions';
+import {OidcException, Oauth2AndOidcErrorsEnum} from '../../exceptions';
 
 @Controller()
 export class AppController {
@@ -18,4 +18,20 @@ export class AppController {
     return 'swagger should go here'; 
     return this.appService.getHello();
   }
+
+  @Get('/save2redis')
+  async getSave2Redis(){
+    try{
+      console.log('save to redis');
+      const number = await this.appService.saveToRedis();
+      console.log('save to redis', {number});
+    }
+    catch(err){
+      return err; 
+    }
+
+    
+    return await this.appService.getFromRedis(); 
+  }
+
 }

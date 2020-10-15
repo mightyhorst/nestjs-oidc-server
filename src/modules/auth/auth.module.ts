@@ -1,7 +1,17 @@
 import { Module } from '@nestjs/common';
+
+/**
+ * @requires Controllers
+ */
 import { AppController } from './app.controller';
 import { AuthController } from './auth.controller';
+import { TokenController } from './token.controller';
+
+/**
+ * @requires Services 
+ */
 import { AppService } from './app.service';
+import { AccountsService } from '../entities/accounts/account.service';
 
 /**
  * @requires TypeORM
@@ -13,6 +23,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
  * @requires Modules
  */
 import { AccountsModule, Account } from '../entities/accounts';
+import { ClientsModule, Client, ClientsService } from '../entities/clients';
 import { SessionModule } from '../sessions/session.module';
 
 /**
@@ -30,13 +41,13 @@ ok(process.env.DB_PASSWORD);
     imports: [
 
         /**
-         * @const MySql Repo
-            DB_TYPE=mysql
-            DB_PORT=3306
-            DB_HOST=remotemysql.com
-            DB_DATABASE=sv7Ti9j3K8
-            DB_USER=sv7Ti9j3K8
-            DB_PASSWORD=OpIEL27BkT
+         * @namespace MySql Repo
+            @const DB_TYPE=mysql
+            @const DB_PORT=3306
+            @const DB_HOST=remotemysql.com
+            @const DB_DATABASE=sv7Ti9j3K8
+            @const DB_USER=sv7Ti9j3K8
+            @const DB_PASSWORD=OpIEL27BkT
          */
         TypeOrmModule.forRoot({
             type: 'mysql',
@@ -47,21 +58,33 @@ ok(process.env.DB_PASSWORD);
             password: process.env.DB_PASSWORD || 'OpIEL27BkT',
             // autoLoadEntities: true,
             // synchronize: true,
-            entities: [Account],
+            entities: [
+                Account,
+                Client
+            ],
         }),
+        TypeOrmModule.forFeature([Account]),
+        TypeOrmModule.forFeature([Client]), 
+
 
         /**
          * @const modules
          */
         AccountsModule,
         SessionModule,
+        ClientsModule, 
 
     ],
     controllers: [
-        // AppController, 
-        AuthController
+        AppController, 
+        AuthController,
+        TokenController, 
     ],
-    providers: [AppService],
+    providers: [
+        AppService,
+        AccountsService,
+        ClientsService, 
+    ],
 })
 export class AppModule {
     constructor(private connection: Connection) {}

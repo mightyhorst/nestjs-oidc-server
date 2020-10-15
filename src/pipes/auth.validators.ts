@@ -9,7 +9,7 @@ import {
 /**
  * @requires Exceptions
  */
-import { OidcException, OidcErrorsEnum, OidcBadRequestException } from '../exceptions'; 
+import { OidcException, Oauth2AndOidcErrorsEnum, OidcBadRequestException } from '../exceptions'; 
 
 /**
  * @requires Models and Types
@@ -36,7 +36,7 @@ export class ClientIdValidator implements PipeTransform {
         console.log('checking the clientId '); 
         if(!clientId){
             throw new OidcBadRequestException(
-                OidcErrorsEnum.invalid_request,
+                Oauth2AndOidcErrorsEnum.invalid_request,
                 AuthRequestRequiredParamters.client_id
             );
         }
@@ -47,7 +47,7 @@ export class ClientIdValidator implements PipeTransform {
             await setTimeout(()=> {}, 2000)
             console.log('lookup complete');
             throw new OidcException(
-                OidcErrorsEnum.unauthorized_client,
+                Oauth2AndOidcErrorsEnum.unauthorized_client,
                 'https://jwt.io',
             );
             return {

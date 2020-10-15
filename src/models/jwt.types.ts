@@ -1,5 +1,6 @@
 import {IClaims} from './claims.types';
 import {IWorkspace } from './workspace.types';
+import { Account } from '../modules/entities/accounts';
 
 export interface JwtPayload{
     iss: string;

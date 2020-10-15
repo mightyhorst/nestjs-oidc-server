@@ -4,19 +4,20 @@ import {
      */
     Controller,
     Get,
-    Post, 
+    Post,
     Query,
-    Body, 
+    Body,
     Render,
-    Redirect, 
+    Redirect,
     Req,
-    Res, 
+    Res,
     UnauthorizedException,
 
     /**
      * @namespace Session 
      */
     Session,
+    NotFoundException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
@@ -24,16 +25,19 @@ import { Request, Response } from 'express';
  * @requires Services 
  */
 import { AppService } from './app.service';
-import { LoginDto } from './dto';
-import { Account } from '../entities/accounts/account.entity';
-import { AccountsService } from '../entities/accounts/account.service';
+import { LoginDto, LoginResponseDto } from './dto';
+import { Account, AccountsService } from '../entities/accounts/';
+import { Client, ClientsService } from '../entities/clients';
+import { JoseService } from '../../services/jose.service';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * @namespace OIDC Exceptions 
  */
 import {
     OidcException,
-    OidcErrorsEnum,
+    Oauth2AndOidcErrorsEnum,
+    OidcBadRequestException,
 } from '../../exceptions';
 /**
  * @namespace Auth types  
@@ -46,6 +50,7 @@ import {
     AuthPrompt,
     RoleEnum,
     InteractionModel,
+    AuthRequestRequiredParamters,
 } from '../../models';
 
 /**
@@ -58,14 +63,20 @@ import {
     ResponseTypeValidator,
 } from '../../pipes';
 
-import { JoseService } from '../../services/jose.service';
+
 
 @Controller('auth')
 export class AuthController {
+
+    private readonly joseService: JoseService; 
+
     constructor(
         private readonly appService: AppService,
         private readonly accountsService: AccountsService,
-    ) { }
+        private readonly clientsService: ClientsService,
+    ) {
+        this.joseService = JoseService.inject(); 
+     }
 
     /**
      * @namespace OAuth2.0 
@@ -158,7 +169,7 @@ export class AuthController {
      */
     @Get('/')
     @Redirect('/auth/login')
-    getAuth(
+    async getAuth(
         /** @namespace Express */
         @Req() req: Request,
         @Res() res: Response,
@@ -185,18 +196,54 @@ export class AuthController {
         @Query('acr_values') acr_values?: string,
 
     ) {
+
+        /**
+         * @step Find the client or throw 
+         */
+        const noClientFoundError = new OidcBadRequestException(
+            Oauth2AndOidcErrorsEnum.unauthorized_client,
+            AuthRequestRequiredParamters.client_id
+        );
         
+        let client: Client;
+        try{
+            client = await this.clientsService.findOne(client_id);
+            console.log('🚀 client: ', {client});
+        }
+        catch(err){
+            throw noClientFoundError; 
+        }
+
+        if (!client) throw noClientFoundError; 
+
+        /**
+         * @step Make sure redirect uri is valid or throw 
+         */
+        const redirect_uris = client.redirect_uris.split(',');
+        const isRedirectUri = redirect_uris.find(uri => {
+            return redirect_uri === uri
+        });
+        if (!isRedirectUri) throw new OidcBadRequestException(
+            Oauth2AndOidcErrorsEnum.invalid_request,
+            AuthRequestRequiredParamters.redirect_uri
+        );
+
+
+        /**
+         * @step Save the session for login or register 
+         */
         if (session && session.interaction) {
             session.interaction = { ...session.interaction };
         }
-        else{
+        else {
             session.interaction = {
-                loginAttempts: 1,    
+                loginAttempts: 1,
             }
         }
         session.interaction = {
             loginAttempts: session.interaction.loginAttempts ? session.interaction.loginAttempts++ : 1,
             clientIp: req.hasOwnProperty('clientIp') ? req['clientIp'] : '',
+            client, 
             client_id,
             redirect_uri,
             scope,
@@ -213,20 +260,16 @@ export class AuthController {
             acr_values,
         };
 
-        if(prompt === AuthPrompt.create) 
+        if (prompt === AuthPrompt.create)
             return {
                 url: '/auth/register'
             };
-        else 
+        else
             return {
                 url: '/auth/login'
             };
         /*
-        return {
-            ...session.interaction
-        };
-        const err = new OidcException(OidcErrorsEnum.access_denied, 'https://jwt.io');
-        throw err;
+        throw new OidcException(OidcErrorsEnum.access_denied, 'https://jwt.io');
         */
     }
 
@@ -271,20 +314,6 @@ export class AuthController {
                 // jwks: joseService.getKeystoreJson()
             };
 
-            console.log('Keystore---->', await joseService.getKeystoreJson());
-            return await joseService.createAccessToken({
-                workspaces: [
-                    {
-                        workspace: 'masterclass',
-                        role: RoleEnum.ADMIN
-                    }
-                ],
-                iss: 'issuer',
-                aud: [
-                    'client_id'
-                ],
-                iat: '' + parseInt((new Date('2012.08.10').getTime() / 1000).toFixed(0))
-            })
         }
         catch (err) {
             return { err }
@@ -300,12 +329,18 @@ export class AuthController {
     @Get('/login')
     @Render('login')
     getLogin(
-        @Session() session: { 
-            interaction?: InteractionModel, 
-            email?: string, 
-            password?: string 
+        @Session() session: {
+            interaction?: InteractionModel,
+            email?: string,
+            password?: string
         },
     ) {
+
+        if(!session || !session.interaction || !session.interaction.client) throw new OidcBadRequestException(
+            Oauth2AndOidcErrorsEnum.unauthorized_client,
+            AuthRequestRequiredParamters.client_id
+        ); 
+
         return {
             email: session.email || '',
             password: session.password || '',
@@ -315,22 +350,86 @@ export class AuthController {
     }
 
     @Post('/login')
-    postLogin(
+    async postLogin(
         @Body() loginDto: LoginDto,
-        @Session() session: { 
-            interaction?: InteractionModel, 
-            email?: string, 
-            password?: string 
+        @Session() session: {
+            interaction?: InteractionModel,
+            email?: string,
+            password?: string
         },
-    ): Promise<Account>{
-        if(loginDto.email){
-            session.email = loginDto.email;
-            session.password = loginDto.password;
-            return this.accountsService.loginWithEmail(
-                loginDto.email, 
-                loginDto.password
+        @Res() res: Response, 
+    ) {
+
+        if (session && session.interaction && session.interaction.response_type) {
+            const response_type: ResponseTypeEnum[] = session.interaction.response_type;
+
+            if (loginDto.email) {
+                session.email = loginDto.email;
+                session.password = loginDto.password;
+
+                try {
+                    const user = await this.accountsService.loginWithEmail(
+                        loginDto.email,
+                        loginDto.password
+                    );
+
+                    let loginResponse: LoginResponseDto = {}; 
+                    if(response_type.includes(ResponseTypeEnum.code)){
+                        loginResponse.code = uuidv4(); 
+                        session.interaction.code = loginResponse.code; 
+                    }
+                    if(response_type.includes(ResponseTypeEnum.id_token)){
+                        const scopes: ScopeEnum[] = session.interaction.scope;
+
+                        try{
+                            loginResponse.id_token = await this.joseService.createIdToken(user, session.interaction.client, scopes);
+                            session.interaction.id_token = loginResponse.id_token; 
+                        }
+                        catch(err){
+                            throw err; 
+                        }
+                    }
+                    if(response_type.includes(ResponseTypeEnum.token)){
+                        loginResponse.access_token = await this.joseService.createAccessToken(user, session.interaction.client);
+                        session.interaction.access_token = loginResponse.access_token; 
+                    }
+
+                    if(session.interaction.state) loginResponse.state = session.interaction.state;
+                    if(session.interaction.nonce) loginResponse.nonce = session.interaction.nonce;
+
+                    /**
+                     * @step redirect uri 
+                     */
+                    const redirectUri = new URL(session.interaction.redirect_uri);
+                    if(loginResponse.code) redirectUri.searchParams.append('code', loginResponse.code);
+                    if(loginResponse.access_token) redirectUri.searchParams.append('access_token', loginResponse.access_token);
+                    if(loginResponse.id_token) redirectUri.searchParams.append('id_token', loginResponse.id_token);
+                    if(loginResponse.state) redirectUri.searchParams.append('state', loginResponse.state);
+                    if(loginResponse.nonce) redirectUri.searchParams.append('nonce', loginResponse.nonce);
+                    res.redirect(redirectUri.href);
+                }
+                catch (err) {
+                    throw new UnauthorizedException({
+                        category: 'mc.user_not_found',
+                        message: 'The user could not be found',
+                        original_error: err.message
+                    },
+                        'The user could not be found'
+                    );
+                }
+            }
+
+        }
+        else {
+            throw new UnauthorizedException({
+                category: 'mc.invalid_session',
+                message: 'The session could not be found'
+            },
+                'The session could not be found'
             );
         }
+
+
         // else if(loginDto.userName){
         //     session.userName = loginDto.userName;
         //     session.password = loginDto.password;
@@ -339,7 +438,7 @@ export class AuthController {
         //         loginDto.password
         //     );
         // }
-        else throw new UnauthorizedException(loginDto);
+        // else throw new UnauthorizedException(loginDto);
     }
 
 

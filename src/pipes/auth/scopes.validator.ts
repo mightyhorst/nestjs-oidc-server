@@ -8,7 +8,7 @@ import {
 /**
  * @requires Exceptions
  */
-import { OidcException, OidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
+import { OidcException, Oauth2AndOidcErrorsEnum, OidcBadRequestException } from '../../exceptions'; 
 
 /**
  * @requires Models and Types
@@ -39,7 +39,7 @@ export class ScopeValidator implements PipeTransform {
         console.log('checking the scopes '); 
         if(!scopes || typeof(scopes) !== 'string'){
             throw new OidcBadRequestException(
-                OidcErrorsEnum.invalid_request,
+                Oauth2AndOidcErrorsEnum.invalid_request,
                 AuthRequestRequiredParamters.scope
             );
         }
@@ -70,7 +70,7 @@ export class ScopeValidator implements PipeTransform {
             }
             
             throw new OidcBadRequestException(
-                OidcErrorsEnum.invalid_scope,
+                Oauth2AndOidcErrorsEnum.invalid_scope,
                 AuthRequestRequiredParamters.scope
             );
 
