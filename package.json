@@ -92,6 +92,16 @@
     "commitizen": {
       "path-old": "./node_modules/cz-conventional-changelog",
       "path": "./node_modules/cz-emoji"
+    },
+    "cz-emoji": {
+      "types": [
+        {
+          "name": "feature",
+          "emoji": "🌟 feat",
+          "code": ":star2: feat",
+          "description": "A new hope/feature"
+        }
+      ]
     }
   }
 }
