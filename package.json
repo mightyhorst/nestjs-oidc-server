@@ -58,6 +58,7 @@
     "@typescript-eslint/parser": "^2.23.0",
     "cypress": "^5.2.0",
     "cz-conventional-changelog": "3.3.0",
+    "cz-emoji": "^1.2.2",
     "dotenv-cli": "^3.2.0",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.0",
@@ -87,7 +88,8 @@
   },
   "config": {
     "commitizen": {
-      "path": "./node_modules/cz-conventional-changelog"
+      "path-old": "./node_modules/cz-conventional-changelog",
+      "path": "./node_modules/cz-emoji"
     }
   }
 }
