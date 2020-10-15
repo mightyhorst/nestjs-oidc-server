@@ -124,6 +124,12 @@
           "emoji": "📦 cicd:",
           "code": ":package: cicd:",
           "description": "Update cicd, env or scripts"
+        },
+        {
+          "name": "docs",
+          "emoji": "💬 docs:",
+          "code": ":speech_balloon: docs:",
+          "description": "Update docs"
         }
       ],
       "skipQuestions": ["scope"]
